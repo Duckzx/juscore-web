@@ -3,6 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from "react";
+import dynamicImport from "next/dynamic";
 import { motion } from "framer-motion";
 import { ArrowLeft, Save, Send, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -23,8 +24,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PeticaoEditor } from "@/components/modules/peticoes/PeticaoEditor";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+
+const PeticaoEditor = dynamicImport(
+  () => import("@/components/modules/peticoes/PeticaoEditor").then((m) => m.PeticaoEditor),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-[500px] w-full rounded-lg" />,
+  }
+);
 
 export default function NovaPeticaoPage() {
   const router = useRouter();

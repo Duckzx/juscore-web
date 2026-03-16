@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { 
-  Plus, 
-  Search, 
-  FileText, 
-  Clock, 
+import {
+  Plus,
+  Search,
+  FileText,
+  Clock,
   CheckCircle2,
   AlertCircle,
   MoreVertical,
@@ -14,13 +14,13 @@ import {
   Edit,
   Trash2,
   Download,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -36,95 +36,50 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { mockPeticoes, statusConfig, tipoConfig } from "@/lib/mock-peticoes";
 
-// Mock data - substituir depois
-const mockPeticoes = [
-  {
-    id: "1",
-    titulo: "Petição Inicial - Ação de Cobrança",
-    cliente: "Maria Oliveira Santos",
-    processo: "1234567-89.2024.8.26.0100",
-    tipo: "inicial",
-    status: "finalizada",
-    dataProtocolo: "2024-02-20",
-    updatedAt: "2024-02-20T14:30:00",
-  },
-  {
-    id: "2",
-    titulo: "Contestação - Ação Trabalhista",
-    cliente: "João Carlos Silva",
-    processo: "9876543-21.2024.5.02.0001",
-    tipo: "contestacao",
-    status: "revisao",
-    updatedAt: "2024-02-19T10:15:00",
-  },
-  {
-    id: "3",
-    titulo: "Recurso de Apelação",
-    cliente: "Ana Paula Costa",
-    processo: "5555555-55.2023.8.26.0200",
-    tipo: "recurso",
-    status: "rascunho",
-    updatedAt: "2024-02-18T16:45:00",
-  },
-  {
-    id: "4",
-    titulo: "Manifestação sobre Documentos",
-    cliente: "Pedro Henrique Almeida",
-    processo: "7777777-77.2024.8.26.0300",
-    tipo: "manifestacao",
-    status: "protocolada",
-    dataProtocolo: "2024-02-15",
-    numeroProtocolo: "PROT-2024-001234",
-    updatedAt: "2024-02-15T09:20:00",
-  },
-];
-
-const statusConfig = {
-  rascunho: {
-    label: "Rascunho",
-    icon: Clock,
-    color: "bg-gray-500",
-  },
-  revisao: {
-    label: "Em Revisão",
-    icon: AlertCircle,
-    color: "bg-amber-500",
-  },
-  finalizada: {
-    label: "Finalizada",
-    icon: CheckCircle2,
-    color: "bg-blue-500",
-  },
-  protocolada: {
-    label: "Protocolada",
-    icon: CheckCircle2,
-    color: "bg-green-500",
-  },
-};
-
-const tipoConfig: Record<string, string> = {
-  inicial: "Inicial",
-  contestacao: "Contestação",
-  replica: "Réplica",
-  manifestacao: "Manifestação",
-  recurso: "Recurso",
-  outro: "Outro",
+const statusIconMap = {
+  rascunho: Clock,
+  revisao: AlertCircle,
+  finalizada: CheckCircle2,
+  protocolada: CheckCircle2,
 };
 
 export default function PeticoesPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState<string>("todos");
   const router = useRouter();
 
-  const filteredPeticoes = mockPeticoes.filter((peticao) =>
-    peticao.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    peticao.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    peticao.processo?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = mockPeticoes.filter((p) => {
+    const matchSearch =
+      p.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.processo ?? "").toLowerCase().includes(searchTerm.toLowerCase());
+    const matchStatus = filtroStatus === "todos" || p.status === filtroStatus;
+    return matchSearch && matchStatus;
+  });
+
+  // Stats calculadas dos dados reais
+  const stats = {
+    total: mockPeticoes.length,
+    rascunho: mockPeticoes.filter((p) => p.status === "rascunho").length,
+    revisao: mockPeticoes.filter((p) => p.status === "revisao").length,
+    protocolada: mockPeticoes.filter((p) => p.status === "protocolada").length,
+  };
+
+  const filtros = [
+    { key: "todos", label: "Todas" },
+    { key: "rascunho", label: "Rascunho" },
+    { key: "revisao", label: "Em Revisão" },
+    { key: "finalizada", label: "Finalizada" },
+    { key: "protocolada", label: "Protocolada" },
+  ] as const;
 
   return (
     <div className="space-y-6">
@@ -136,10 +91,9 @@ export default function PeticoesPage() {
             Crie e gerencie petições com automação inteligente
           </p>
         </div>
-
         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <Button 
-            size="lg" 
+          <Button
+            size="lg"
             className="gap-2"
             onClick={() => router.push("/peticoes/nova")}
           >
@@ -151,101 +105,93 @@ export default function PeticoesPage() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total de Petições
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">47</div>
-              <p className="text-xs text-muted-foreground">
-                Todas as petições cadastradas
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Em Rascunho
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-600">12</div>
-              <p className="text-xs text-muted-foreground">
-                Aguardando conclusão
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Em Revisão
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-amber-600">5</div>
-              <p className="text-xs text-muted-foreground">
-                Pendentes de aprovação
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Protocoladas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">30</div>
-              <p className="text-xs text-muted-foreground">
-                Este mês
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
+        {[
+          {
+            label: "Total",
+            value: stats.total,
+            sub: "Todas as petições",
+            icon: FileText,
+            color: "text-purple-500",
+            delay: 0.05,
+          },
+          {
+            label: "Rascunho",
+            value: stats.rascunho,
+            sub: "Aguardando conclusão",
+            icon: Clock,
+            color: "text-gray-500",
+            delay: 0.1,
+          },
+          {
+            label: "Em Revisão",
+            value: stats.revisao,
+            sub: "Pendentes de aprovação",
+            icon: AlertCircle,
+            color: "text-amber-500",
+            delay: 0.15,
+          },
+          {
+            label: "Protocoladas",
+            value: stats.protocolada,
+            sub: "Enviadas ao tribunal",
+            icon: CheckCircle2,
+            color: "text-green-500",
+            delay: 0.2,
+          },
+        ].map(({ label, value, sub, icon: Icon, color, delay }) => (
+          <motion.div
+            key={label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay }}
+          >
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {label}
+                </CardTitle>
+                <Icon className={`w-4 h-4 ${color}`} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{value}</div>
+                <p className="text-xs text-muted-foreground mt-1">{sub}</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
       </div>
 
-      {/* Lista de Petições */}
+      {/* Lista */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar petições por título, cliente ou processo..."
+                placeholder="Buscar por título, cliente ou processo..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
               />
             </div>
-            <Button variant="outline">Filtros</Button>
+            <div className="flex gap-1.5 flex-wrap">
+              {filtros.map(({ key, label }) => (
+                <Button
+                  key={key}
+                  size="sm"
+                  variant={filtroStatus === key ? "default" : "outline"}
+                  onClick={() => setFiltroStatus(key)}
+                  className="text-xs"
+                >
+                  {label}
+                  {key !== "todos" && (
+                    <span className="ml-1.5 opacity-70">
+                      {mockPeticoes.filter((p) => p.status === key).length}
+                    </span>
+                  )}
+                </Button>
+              ))}
+            </div>
           </div>
         </CardHeader>
 
@@ -262,86 +208,135 @@ export default function PeticoesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPeticoes.map((peticao, index) => {
-                const statusInfo = statusConfig[peticao.status as keyof typeof statusConfig];
-                const StatusIcon = statusInfo.icon;
+              {filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-14 text-muted-foreground">
+                    <FileText className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                    Nenhuma petição encontrada.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filtered.map((peticao, index) => {
+                  const sInfo = statusConfig[peticao.status as keyof typeof statusConfig];
+                  const StatusIcon = statusIconMap[peticao.status as keyof typeof statusIconMap];
 
-                return (
-                  <motion.tr
-                    key={peticao.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="group hover:bg-muted/50 cursor-pointer"
-                    onClick={() => router.push(`/peticoes/${peticao.id}`)}
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
-                          <FileText className="w-5 h-5 text-white" />
+                  return (
+                    <motion.tr
+                      key={peticao.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="group hover:bg-muted/50 cursor-pointer"
+                      onClick={() => router.push(`/peticoes/${peticao.id}`)}
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shrink-0">
+                            <FileText className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{peticao.titulo}</p>
+                            {peticao.processo && (
+                              <p className="text-xs text-muted-foreground font-mono">
+                                {peticao.processo}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium">{peticao.titulo}</p>
-                          {peticao.processo && (
-                            <p className="text-xs text-muted-foreground font-mono">
-                              {peticao.processo}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm">{peticao.cliente}</p>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {tipoConfig[peticao.tipo] || peticao.tipo}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={statusInfo.color}>
-                        <StatusIcon className="w-3 h-3 mr-1" />
-                        {statusInfo.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(peticao.updatedAt).toLocaleDateString("pt-BR", {
-                        day: "2-digit",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => router.push(`/peticoes/${peticao.id}`)}>
-                            <Eye className="w-4 h-4 mr-2" />
-                            Visualizar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => router.push(`/peticoes/${peticao.id}/editar`)}>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Download className="w-4 h-4 mr-2" />
-                            Exportar PDF
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </motion.tr>
-                );
-              })}
+                      </TableCell>
+                      <TableCell className="text-sm">{peticao.cliente}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {tipoConfig[peticao.tipo] ?? peticao.tipo}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`gap-1 text-xs ${sInfo.className}`}
+                        >
+                          <StatusIcon className="w-3 h-3" />
+                          {sInfo.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(peticao.updatedAt).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            asChild
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/peticoes/${peticao.id}`);
+                              }}
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              Visualizar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/peticoes/${peticao.id}/editar`);
+                              }}
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toast.info("Exportação de PDF em desenvolvimento.");
+                              }}
+                            >
+                              <Download className="w-4 h-4 mr-2" />
+                              Exportar PDF
+                            </DropdownMenuItem>
+                            {peticao.status !== "protocolada" && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toast.success("Petição marcada como protocolada!");
+                                  }}
+                                >
+                                  <Send className="w-4 h-4 mr-2" />
+                                  Protocolar
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toast.error("Petição excluída.");
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </motion.tr>
+                  );
+                })
+              )}
             </TableBody>
           </Table>
         </CardContent>
