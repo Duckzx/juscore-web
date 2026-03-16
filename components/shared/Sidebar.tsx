@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   Scale,
   Menu,
+  LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,12 @@ interface SidebarProps {
 }
 
 const menuItems = [
+  {
+    title: "Dashboard",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+    color: "text-indigo-500",
+  },
   {
     title: "Clientes",
     href: "/clientes",
